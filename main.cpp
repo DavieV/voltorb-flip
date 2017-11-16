@@ -1,14 +1,19 @@
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "axis.hpp"
+#include "board.hpp"
 #include "tile.hpp"
 
 // Reads in the information about how many bombs and the total value stored on
 // each row and column.
-void read_axis(std::vector<Axis>& axis, std::string name) {
+std::vector<std::pair<int, int>> read_axis(std::string name) {
+  std::vector<std::pair<int, int>> axis_data;
+
   for (int i = 0; i < 5; ++i) {
     std::cout << "Enter total value and bomb count for " << name << " " << i + 1
               << std::endl;
@@ -16,98 +21,79 @@ void read_axis(std::vector<Axis>& axis, std::string name) {
     int t, b;
     std::cin >> t >> b;
 
-    axis.emplace_back(t, b);
+    axis_data.push_back({t, b});
   }
+
+  return axis_data;
 }
 
-void update_board(std::vector<std::vector<Tile>>& board) {
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      board[i][j].update_value();
-      board[i][j].update_candidates();
+void find_solutions(Board& board, int idx, std::vector<Board>& solutions) {
+  if (idx >= 25) {
+    if (board.solved()) {
+      solutions.push_back(board);
+    }
+    return;
+  }
+
+  if (board.invalid())
+    return;
+
+  int i = idx / 5;
+  int j = idx % 5;
+
+  const auto& tile = board.tile_at(i, j);
+
+  for (int k = Tile::One; k < Tile::Size; ++k) {
+    if (tile.is_candidate(k)) {
+      auto b = board;
+
+      b.update_at(i, j, k);
+      b.update();
+
+      find_solutions(b, idx + 1, solutions);
     }
   }
 }
 
-void display_board(const std::vector<std::vector<Tile>>& board) {
+Board intersection(Board& a, Board& b) {
+  Board ret = a;
   for (int i = 0; i < 5; ++i) {
     for (int j = 0; j < 5; ++j) {
-      std::cout << board[i][j] << " ";
+      int val = a.tile_at(i, j).val();
+      if (val == b.tile_at(i, j).val())
+        ret.tile_at(i, j).set_value(val);
+      else
+        ret.tile_at(i, j).set_value(0);
     }
-    std::cout << "\n";
   }
-  std::cout << "\n";
+
+  return ret;
 }
 
-bool board_is_solvable(std::vector<std::vector<Tile>>& board) {
-  // display_board(board);
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      if (board[i][j].val() != 0 && !board[i][j].used()) {
-        return true;
-        // continue;
-      }
+bool intersect_solutions(std::vector<Board>& solutions, Board& b) {
+  if (solutions.empty())
+    return false;
 
-      if (!board[i][j].one_candidate() && !board[i][j].two_candidate() &&
-          !board[i][j].three_candidate() && !board[i][j].bomb_candidate()) {
-        // We've found a tile which is not a candidate for any value. This means
-        // that the given board is not solveable.
-        return false;
-      }
-
-      if (board[i][j].one_candidate()) {
-        auto b = board;
-        b[i][j].set_value(1);
-        if (!board_is_solvable(b)) {
-          board[i][j].set_candidate(Tile::One, false);
-        }
-      }
-
-      if (board[i][j].two_candidate()) {
-        auto b = board;
-        b[i][j].set_value(2);
-        if (!board_is_solvable(b)) {
-          board[i][j].set_candidate(Tile::Two, false);
-        }
-      }
-
-      if (board[i][j].three_candidate()) {
-        auto b = board;
-        b[i][j].set_value(3);
-        if (!board_is_solvable(b)) {
-          board[i][j].set_candidate(Tile::Three, false);
-        }
-      }
-      if (board[i][j].bomb_candidate()) {
-        auto b = board;
-        b[i][j].set_value(4);
-        if (!board_is_solvable(b)) {
-          board[i][j].set_candidate(Tile::Bomb, false);
-        }
-      }
-
-      update_board(board);
-    }
-  }
+  b = solutions[0];
+  for (unsigned i = 1; i < solutions.size(); ++i)
+    b = intersection(b, solutions[i]);
 
   return true;
 }
 
-std::pair<int, int> find_move(std::vector<std::vector<Tile>>& board) {
-  auto b = board;
-  if (board_is_solvable(b)) {
-    board = b;
+bool solve_board(Board& board) {
+  std::vector<Board> solutions;
+  while (!board.solved()) {
+    find_solutions(board, 0, solutions);
+    std::cout << solutions.size() << std::endl;
+    if (!intersect_solutions(solutions, board))
+      return false;
+    board.reset_candidates();
+    board.update();
+    std::cout << board << std::endl;
+    solutions.clear();
   }
-
-  for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 5; ++j) {
-      if (board[i][j].val() != 0 && !board[i][j].used()) {
-        return {i, j};
-      }
-    }
-  }
-
-  return {-1, -1};
+  return true;
 }
 
 int main() {
@@ -115,31 +101,29 @@ int main() {
   std::vector<Axis> columns;
 
   // Read in data for each row and column.
-  read_axis(rows, "row");
-  read_axis(columns, "column");
+  auto rows_data = read_axis("row");
+  auto columns_data = read_axis("column");
 
-  std::vector<std::vector<Tile>> board;
+  Board board(rows_data, columns_data);
 
-  for (int i = 0; i < 5; ++i) {
-    board.emplace_back();
-    for (int j = 0; j < 5; ++j) {
-      board[i].emplace_back(rows[i], columns[j]);
-    }
-  }
+  board.update();
 
-  update_board(board);
+  // auto start = std::chrono::system_clock::now();
 
-  auto p = find_move(board);
+  if (solve_board(board))
+    std::cout << board << std::endl;
+  /*
+  std::vector<Board> solutions;
+  find_solutions(board, 0, solutions);
 
-  while (p.first != -1 && p.second != -1) {
-    std::cout << "Position: (" << p.first << "," << p.second << ")\n"
-              << "Value: " << board[p.first][p.second] << "\n";
-    std::cout << "Making move...\n";
-    board[p.first][p.second].set_used(true);
-    p = find_move(board);
-  }
+  std::cout << solutions.size() << std::endl;
+  std::cout << intersect_solutions(solutions) << std::endl;
+  */
 
-  display_board(board);
+  // auto end = std::chrono::system_clock::now();
+  // std::chrono::duration<double> seconds = end - start;
+
+  // std::cout << "Elapsed time: " << seconds.count() << "s\n";
 
   return 0;
 }

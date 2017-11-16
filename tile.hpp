@@ -8,29 +8,20 @@
 
 class Tile {
  public:
-  Tile(Axis r, Axis c);
+  Tile();
 
-  enum { One = 0, Two = 1, Three = 2, Bomb = 3, Size = 4 };
+  Tile(const Tile& t);
+
+  enum { One = 1, Two = 2, Three = 3, Bomb = 4, Size = 5 };
 
   // Simple getter methods.
-  bool used() const;
   int val() const;
+  bool used() const;
   bool bomb_candidate() const;
   bool one_candidate() const;
   bool two_candidate() const;
   bool three_candidate() const;
-
-  void update_candidates();
-
-  // Uses the information from the given axis which corresponds to this tile to
-  // determine whether it is definitive that this tile does not hold anything of
-  // value. In such a case the |two_candidate_| and |three_candidate_| variables
-  // are updated.
-  void update_candidates(const Axis& axis);
-
-  // Uses the information from the candidates array to see if this tile has a
-  // definitive value.
-  void update_value();
+  bool is_candidate(int type) const;
 
   // Updates the candidates array at the given candidate |c| to the value
   // of |flag|.
@@ -45,18 +36,15 @@ class Tile {
   friend std::ostream& operator<<(std::ostream& os, const Tile& t);
 
  private:
-  // References to the row and column axes that the tile belongs to.
-  Axis row_;
-  Axis column_;
-
-  bool used_;
-
   // The value of the tile, 0 represents an unknown value. 4 represents a bomb.
   int val_;
+
+  bool used_;
 
   // Array of candidates flags which represents whether or not the tile may
   // possible hold each value. The index of the array using the Candidate enum
   // corresponds to the candidate for that value.
+  // NOTE: In order to '1-index' the array there is an empty element at index 0.
   std::array<bool, Size> candidates_;
 };
 

@@ -2,10 +2,16 @@
 #define __VOLTORB_FLIP_AXIS__
 
 #include <cstdint>
+#include <iostream>
+#include <vector>
+
+#include "tile.hpp"
 
 class Axis {
  public:
   Axis(int t, int b);
+
+  Axis(const Axis& a);
 
   // Updates the count for the number of tiles that have been discovered along
   // the axis, as well as the total value of tiles that have been discovered
@@ -27,6 +33,12 @@ class Axis {
   int discovered_value() const;
   int discovered_tiles() const;
   int discovered_bombs() const;
+
+  // Return the the tile indexed at |i|.
+  Tile& at(int i);
+
+  // Reset the descivered values on the axis.
+  void reset();
 
  private:
   // The total value of tiles on this axis.

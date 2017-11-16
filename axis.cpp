@@ -1,16 +1,22 @@
-#include "axis.hpp"
 #include <cstdint>
+#include <vector>
+
+#include "axis.hpp"
+#include "tile.hpp"
 
 Axis::Axis(int t, int b)
-    : total_value_(t),
-      bomb_count_(b),
-      discovered_value_(0),
-      discovered_tiles_(0),
-      discovered_bombs_(0) {}
+    : total_value_(t), bomb_count_(b), discovered_value_(0),
+      discovered_tiles_(0), discovered_bombs_(0) {}
+
+Axis::Axis(const Axis &a)
+    : total_value_(a.total_value_), bomb_count_(a.bomb_count_),
+      discovered_value_(a.discovered_value_),
+      discovered_tiles_(a.discovered_tiles_),
+      discovered_bombs_(a.discovered_bombs_) {}
 
 void Axis::update(int discovered) {
-  if (discovered == 4) {
-    found_bomb();
+  if (discovered == Tile::Bomb) {
+    ++discovered_bombs_;
     return;
   }
   ++discovered_tiles_;
@@ -26,6 +32,13 @@ int Axis::undiscovered_value() const {
 int Axis::undiscovered_tiles() const {
   return 5 - bomb_count_ - discovered_tiles_;
 }
+
+void Axis::reset() {
+  discovered_bombs_ = 0;
+  discovered_value_ = 0;
+  discovered_tiles_ = 0;
+}
+
 int Axis::total_value() const { return total_value_; }
 
 int Axis::bomb_count() const { return bomb_count_; }
