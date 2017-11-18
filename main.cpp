@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <list>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,7 +28,7 @@ std::vector<std::pair<int, int>> read_axis(std::string name) {
   return axis_data;
 }
 
-void find_solutions(Board& board, int idx, std::vector<Board>& solutions) {
+void find_solutions(Board& board, int idx, std::list<Board>& solutions) {
   if (idx >= 25) {
     if (board.solved()) {
       solutions.push_back(board);
@@ -44,56 +45,61 @@ void find_solutions(Board& board, int idx, std::vector<Board>& solutions) {
   const auto& tile = board.tile_at(i, j);
 
   for (int k = Tile::One; k < Tile::Size; ++k) {
-    if (tile.is_candidate(k)) {
-      auto b = board;
+    if (!tile.is_candidate(k)) continue;
 
-      b.update_at(i, j, k);
-      b.update();
+    auto b = board;
 
-      find_solutions(b, idx + 1, solutions);
-    }
+    b.update_at(i, j, k);
+    b.update();
+
+    find_solutions(b, idx + 1, solutions);
   }
 }
 
-Board intersection(Board& a, Board& b) {
-  Board ret = a;
+void intersect_solutions(std::list<Board>& solutions, Board& b) {
+  if (solutions.empty())
+    return;
+
+  for (const Board& solution : solutions)
+    b.safe_intersect(solution);
+}
+
+void discover_safe_tiles(Board& b) {
   for (int i = 0; i < 5; ++i) {
     for (int j = 0; j < 5; ++j) {
-      int val = a.tile_at(i, j).val();
-      if (val == b.tile_at(i, j).val())
-        ret.tile_at(i, j).set_value(val);
-      else
-        ret.tile_at(i, j).set_value(0);
+      Tile& tile = b.tile_at(i, j);
+      if (tile.val() == Tile::Safe) {
+        std::cout << "Enter the value for tile at row " << i + 1 << " column "
+                  << j + 1 << " : ";
+        int value;
+        std::cin >> value;
+        tile.set_value(value);
+      }
     }
   }
-
-  return ret;
 }
 
-bool intersect_solutions(std::vector<Board>& solutions, Board& b) {
-  if (solutions.empty())
-    return false;
-
-  b = solutions[0];
-  for (unsigned i = 1; i < solutions.size(); ++i)
-    b = intersection(b, solutions[i]);
-
-  return true;
-}
-
-bool solve_board(Board& board) {
-  std::vector<Board> solutions;
-  while (!board.solved()) {
-    find_solutions(board, 0, solutions);
-    std::cout << solutions.size() << std::endl;
-    if (!intersect_solutions(solutions, board))
-      return false;
-    board.reset_candidates();
-    board.update();
-    std::cout << board << std::endl;
-    solutions.clear();
+void discard_solutions(std::list<Board>& solutions, const Board &b) {
+  for (auto iter = solutions.begin(); iter != solutions.end(); ) {
+    if (!b.known_tiles_match(*iter))
+      iter = solutions.erase(iter);
+    else
+      ++iter;
   }
-  return true;
+}
+
+void find_solution(Board& board) {
+  std::list<Board> solutions;
+  find_solutions(board, 0, solutions);
+
+  while (solutions.size() > 1) {
+    std::cout << "Number of solutions: " << solutions.size() << std::endl;
+    intersect_solutions(solutions, board);
+    std::cout << board << std::endl;
+    discover_safe_tiles(board);
+    std::cout << board << std::endl;
+    discard_solutions(solutions, board);
+  }
 }
 
 int main() {
@@ -108,22 +114,14 @@ int main() {
 
   board.update();
 
-  // auto start = std::chrono::system_clock::now();
+  auto start = std::chrono::system_clock::now();
 
-  if (solve_board(board))
-    std::cout << board << std::endl;
-  /*
-  std::vector<Board> solutions;
-  find_solutions(board, 0, solutions);
+  find_solution(board);
 
-  std::cout << solutions.size() << std::endl;
-  std::cout << intersect_solutions(solutions) << std::endl;
-  */
+  auto end = std::chrono::system_clock::now();
+  std::chrono::duration<double> seconds = end - start;
 
-  // auto end = std::chrono::system_clock::now();
-  // std::chrono::duration<double> seconds = end - start;
-
-  // std::cout << "Elapsed time: " << seconds.count() << "s\n";
+  std::cout << "Elapsed time: " << seconds.count() << "s\n";
 
   return 0;
 }

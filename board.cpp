@@ -1,5 +1,5 @@
 #include <vector>
-
+#include <list>
 #include "axis.hpp"
 #include "board.hpp"
 #include "tile.hpp"
@@ -19,7 +19,7 @@ Tile& Board::tile_at(int i, int j) { return tiles_[i][j]; }
 Axis& Board::row_at(int i) { return rows_[i]; }
 Axis& Board::column_at(int i) { return columns_[i]; }
 
-bool Board::invalid() {
+bool Board::invalid() const {
   for (int i = 0; i < 5; ++i) {
     int row_val_total = 0;
     int column_val_total = 0;
@@ -56,7 +56,7 @@ bool Board::invalid() {
   return false;
 }
 
-bool Board::solved() {
+bool Board::solved() const {
   for (int i = 0; i < 5; ++i) {
     int row_val_total = 0;
     int column_val_total = 0;
@@ -187,6 +187,37 @@ void Board::reset_candidates() {
       }
     }
   }
+}
+
+void Board::intersect(const Board& b) {
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      if (tiles_[i][j].val() != b.tiles_[i][j].val())
+        tiles_[i][j].set_value(Tile::Unknown);
+    }
+  }
+}
+
+void Board::safe_intersect(const Board& b) {
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      if (tiles_[i][j].val() != Tile::Bomb && b.tiles_[i][j].val() != Tile::Bomb)
+        tiles_[i][j].set_value(Tile::Safe);
+      else
+        tiles_[i][j].set_value(Tile::Unknown);
+    }
+  }
+}
+
+bool Board::known_tiles_match(const Board &b) const {
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      if (tiles_[i][j].val() != Tile::Unknown &&
+          tiles_[i][j].val() != b.tiles_[i][j].val())
+        return false;
+    }
+  }
+  return true;
 }
 
 std::ostream &operator<<(std::ostream &os, const Board &b) {

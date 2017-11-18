@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
 
 #include "axis.hpp"
 #include "tile.hpp"
@@ -27,15 +28,29 @@ class Board {
 
    // Determine if the current values assigned on the board break any of the
    // rules outlined by the axes.
-   bool invalid();
+   bool invalid() const;
 
    // Determines whether or not the current board is solved based on on the
    // rules for each axis and the values assigned for each tile. Note that this
    // function assumes that every tile on the board has been assigned a value.
-   bool solved();
+   bool solved() const;
 
    // Simply reset the candidate flags for each tile to true.
    void reset_candidates();
+
+   // Perform an intersection of tiles between this board and the given board
+   // |b|. If the values of the tiles do not match then set the value of the
+   // tile to 0.
+   void intersect(const Board& b);
+
+   // Performs the same intersection as |intersect()|, but treats all non-bomb
+   // values as the same "safe" value. Used to identify tiles shared between
+   // boards which don't contain bombs.
+   void safe_intersect(const Board& b);
+
+   // Determine whether the known tiles in this board match with the given board
+   // |b|.
+   bool known_tiles_match(const Board& b) const;
 
    friend std::ostream& operator<<(std::ostream& os, const Board& b);
 

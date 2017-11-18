@@ -12,7 +12,15 @@ class Tile {
 
   Tile(const Tile& t);
 
-  enum { One = 1, Two = 2, Three = 3, Bomb = 4, Size = 5 };
+  enum {
+    Unknown = 0,
+    One = 1,
+    Two = 2,
+    Three = 3,
+    Bomb = 4,
+    Size = 5,
+    Safe = 6
+  };
 
   // Simple getter methods.
   int val() const;
